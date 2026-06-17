@@ -90,6 +90,8 @@ export function SubmitPage() {
   const { config } = useSiteConfig();
   const [form, setForm] = useState<FormState>(empty);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const focus = useFieldFocus();
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
@@ -98,18 +100,26 @@ export function SubmitPage() {
     setForm((f) => ({ ...f, [t.name]: value }));
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    addSubmission({
-      name: form.name,
-      studentCode: form.studentCode,
-      grade: form.grade,
-      category: form.category,
-      theme: form.theme,
-      title: form.title,
-      content: form.content,
-    });
-    setSubmitted(true);
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      await addSubmission({
+        name: form.name,
+        studentCode: form.studentCode,
+        grade: form.grade,
+        category: form.category,
+        theme: form.theme,
+        title: form.title,
+        content: form.content,
+      });
+      setSubmitted(true);
+    } catch (err) {
+      setSubmitError("Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   if (submitted) {
@@ -181,6 +191,11 @@ export function SubmitPage() {
         </p>
       </div>
 
+      {submitError && (
+        <div className="rounded-xl px-4 py-3 mb-2 text-sm" style={{ backgroundColor: "#fee2e2", color: "#b91c1c" }}>
+          {submitError}
+        </div>
+      )}
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         <div className="grid sm:grid-cols-2 gap-5">
           <Field label="Full Name" required>
@@ -261,10 +276,11 @@ export function SubmitPage() {
 
         <button
           type="submit"
-          className="w-full py-3 rounded-xl text-white hover:opacity-90 transition-opacity"
+          disabled={submitting}
+          className="w-full py-3 rounded-xl text-white hover:opacity-90 transition-opacity disabled:opacity-60"
           style={{ backgroundColor: "#14532d", fontWeight: 500 }}
         >
-          Submit Your Work
+          {submitting ? "Submitting..." : "Submit Your Work"}
         </button>
       </form>
     </div>

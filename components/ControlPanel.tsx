@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Eye, EyeOff, Lock, Settings, Palette, Crown, Star, BookOpen,
   RotateCcw, Save, CheckCircle, BarChart2, Users, FileText, ThumbsUp, Trash2,
@@ -154,13 +154,23 @@ export function ControlPanel() {
   const [saved, setSaved] = useState(false);
   const [showWritersModal, setShowWritersModal] = useState(false);
 
-  const { config, updateConfig, resetConfig } = useSiteConfig();
+  const { config, updateConfig, resetConfig, loading } = useSiteConfig();
   const { submissions } = useSubmissions();
   const { votes } = useVotes();
   const { allPublished } = usePublishedArticles();
   const { executives, editorialTeam, addMember, removeMember } = useTeamMembers();
 
   const [draft, setDraft] = useState({ ...config });
+
+  // Re-sync draft when config loads from Supabase (async)
+  const configLoaded = useRef(false);
+  useEffect(() => {
+    if (!loading && !configLoaded.current) {
+      configLoaded.current = true;
+      setDraft({ ...config });
+    }
+  }, [loading]);
+
   const [newThemeOption, setNewThemeOption] = useState("");
   const [newEditorChoiceId, setNewEditorChoiceId] = useState("");
   const [newWomId, setNewWomId] = useState("");

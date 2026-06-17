@@ -7,7 +7,7 @@ import { articles as initialArticles } from "@/data/articles";
 interface VoteContextType {
   votes: Record<string, number>;
   voted: Record<string, boolean>;
-  castVote: (id: string) => void;
+  castVote: (id: string) => Promise<void>;
 }
 
 const VoteContext = createContext<VoteContextType | null>(null);
@@ -72,9 +72,10 @@ export function VoteProvider({ children }: { children: ReactNode }) {
         "postgres_changes",
         { event: "*", schema: "public", table: "votes" },
         (payload) => {
-          const row = payload.new as any;
-          if (row?.article_id) {
-            setVotes((prev) => ({ ...prev, [row.article_id]: Number(row.count) }));
+          const row = payload.new as Record<string, unknown>;
+          const articleId = row?.article_id as string | undefined;
+          if (articleId) {
+            setVotes((prev) => ({ ...prev, [articleId]: Number(row.count) }));
           }
         }
       )

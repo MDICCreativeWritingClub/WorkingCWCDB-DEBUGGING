@@ -112,7 +112,9 @@ export function SiteConfigProvider({ children }: { children: ReactNode }) {
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "site_config", filter: "key=eq.config" },
         (payload) => {
-          setConfig((prev) => ({ ...prev, ...(payload.new as any).value }));
+          const newRow = payload.new as Record<string, unknown>;
+          const newValue = newRow.value as Partial<SiteConfig>;
+          setConfig((prev) => ({ ...prev, ...newValue }));
         }
       )
       .subscribe();
@@ -120,7 +122,7 @@ export function SiteConfigProvider({ children }: { children: ReactNode }) {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const updateConfig = useCallback(async (partial: Partial<SiteConfig>) => {
+  const updateConfig = useCallback((partial: Partial<SiteConfig>) => {
     setConfig((prev) => {
       const updated = { ...prev, ...partial };
       // persist to Supabase
@@ -132,7 +134,7 @@ export function SiteConfigProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const resetConfig = useCallback(async () => {
+  const resetConfig = useCallback(async (): Promise<void> => {
     setConfig(defaults);
     await supabase.from("site_config").upsert({ key: "config", value: defaults });
   }, []);
