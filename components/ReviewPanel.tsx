@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   CheckCircle, XCircle, Clock, Lock, Eye, EyeOff,
-  ClipboardList, Settings,
+  ClipboardList, Settings, PenSquare,
 } from "lucide-react";
 import { useSubmissions, type Submission } from "@/context/SubmissionsContext";
+import { isEditorUnlocked, setEditorUnlocked } from "@/lib/editorAuth";
 
 const EDITOR_CODE = "CWC2026";
 
@@ -29,15 +30,7 @@ function StatusBadge({ status }: { status: Submission["status"] }) {
   );
 }
 
-function SubmissionCard({
-  sub,
-  onApprove,
-  onReject,
-}: {
-  sub: Submission;
-  onApprove: () => void;
-  onReject: () => void;
-}) {
+function SubmissionCard({ sub }: { sub: Submission }) {
   const [expanded, setExpanded] = useState(false);
   const date = new Date(sub.submittedAt).toLocaleDateString("en-GB", {
     day: "numeric", month: "short", year: "numeric",
@@ -117,22 +110,13 @@ function SubmissionCard({
           <span style={{ color: "#9ca3af", fontSize: "0.7rem" }}>Submitted {date}</span>
 
           {sub.status === "pending" && (
-            <div className="flex gap-2">
-              <button
-                onClick={onReject}
-                className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm transition-all hover:opacity-90"
-                style={{ backgroundColor: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5" }}
-              >
-                <XCircle size={14} /> Reject
-              </button>
-              <button
-                onClick={onApprove}
-                className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm transition-all hover:opacity-90"
-                style={{ backgroundColor: "#14532d", color: "#ffffff" }}
-              >
-                <CheckCircle size={14} /> Approve
-              </button>
-            </div>
+            <Link
+              href={`/review/${sub.id}`}
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm transition-all hover:opacity-90"
+              style={{ backgroundColor: "#14532d", color: "#ffffff" }}
+            >
+              <PenSquare size={14} /> Review &amp; Edit
+            </Link>
           )}
         </div>
       </div>
@@ -141,16 +125,21 @@ function SubmissionCard({
 }
 
 export function ReviewPanel() {
-  const { submissions, updateStatus } = useSubmissions();
+  const { submissions } = useSubmissions();
   const [unlocked, setUnlocked] = useState(false);
   const [code, setCode] = useState("");
   const [error, setError] = useState(false);
   const [tab, setTab] = useState<FilterTab>("pending");
   const [showCode, setShowCode] = useState(false);
 
+  useEffect(() => {
+    if (isEditorUnlocked()) setUnlocked(true);
+  }, []);
+
   function handleUnlock(e: React.FormEvent) {
     e.preventDefault();
     if (code.trim() === EDITOR_CODE) {
+      setEditorUnlocked();
       setUnlocked(true);
       setError(false);
     } else {
@@ -293,12 +282,7 @@ export function ReviewPanel() {
       ) : (
         <div className="flex flex-col gap-4">
           {filtered.map((sub) => (
-            <SubmissionCard
-              key={sub.id}
-              sub={sub}
-              onApprove={() => updateStatus(sub.id, "approved")}
-              onReject={() => updateStatus(sub.id, "rejected")}
-            />
+            <SubmissionCard key={sub.id} sub={sub} />
           ))}
         </div>
       )}
