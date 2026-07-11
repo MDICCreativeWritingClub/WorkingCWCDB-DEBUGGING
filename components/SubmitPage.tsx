@@ -123,8 +123,18 @@ export function SubmitPage() {
     setForm((f) => ({ ...f, [t.name]: value }));
   }
 
+  function handleStudentCodeChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 9);
+    setForm((f) => ({ ...f, studentCode: digitsOnly }));
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (!/^\d{1,9}$/.test(form.studentCode)) {
+      setSubmitError("Student code must contain only numbers (up to 9 digits).");
+      return;
+    }
 
     if (limitReached) {
       setSubmitError(
@@ -249,10 +259,14 @@ export function SubmitPage() {
               style={inputStyle} {...focus}
             />
           </Field>
-          <Field label="Student Code" hint="Your school-issued student ID (e.g. 201300141)" required>
+          <Field label="Student Code" hint="Your school-issued student ID — numbers only, up to 9 digits" required>
             <input
-              required name="studentCode" value={form.studentCode} onChange={handleChange}
-              placeholder="e.g. 20xx00xxx"
+              required name="studentCode" value={form.studentCode} onChange={handleStudentCodeChange}
+              placeholder="e.g. 202400342"
+              inputMode="numeric"
+              pattern="\d{1,9}"
+              maxLength={9}
+              title="Numbers only, up to 9 digits"
               style={inputStyle} {...focus}
             />
           </Field>
