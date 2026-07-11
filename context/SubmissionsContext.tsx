@@ -21,6 +21,11 @@ interface SubmissionsContextType {
   submissions: Submission[];
   addSubmission: (sub: Omit<Submission, "id" | "submittedAt" | "status">) => Promise<string>;
   updateStatus: (id: string, status: "approved" | "rejected") => void;
+  updateSubmission: (
+    id: string,
+    edits: { title: string; content: string },
+    status: "approved" | "rejected"
+  ) => Promise<void>;
   loading: boolean;
 }
 
@@ -135,8 +140,30 @@ export function SubmissionsProvider({ children }: { children: ReactNode }) {
     setSubmissions((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
   }, []);
 
+  const updateSubmission = useCallback(
+    async (
+      id: string,
+      edits: { title: string; content: string },
+      status: "approved" | "rejected"
+    ): Promise<void> => {
+      const { error } = await supabase
+        .from("submissions")
+        .update({ title: edits.title, content: edits.content, status })
+        .eq("id", id);
+
+      if (error) throw new Error("Failed to save changes");
+
+      setSubmissions((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, ...edits, status } : s))
+      );
+    },
+    []
+  );
+
   return (
-    <SubmissionsContext.Provider value={{ submissions, addSubmission, updateStatus, loading }}>
+    <SubmissionsContext.Provider
+      value={{ submissions, addSubmission, updateStatus, updateSubmission, loading }}
+    >
       {children}
     </SubmissionsContext.Provider>
   );
