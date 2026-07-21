@@ -48,16 +48,17 @@ export function InfoPage() {
           style={{ backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0" }}
         >
           <p style={{ color: "#374151", lineHeight: "1.8", fontSize: "0.95rem" }}>
-            Click the <strong style={{ color: "#14532d" }}>Submit Work</strong> button in the
+            Click the <strong style={{ color: "#14532d" }}>Submit Work</strong>  button in the
             navbar to submit a piece of writing. You can submit poems, short stories, essays,
             or any creative writing you&apos;d like to share with the club.
           </p>
           <ul className="space-y-2" style={{ color: "#374151", fontSize: "0.9rem" }}>
             {[
               "Fill in your name, grade, and the title of your piece.",
-              "Select a category: Poetry, Fiction, Non-Fiction, or Essay.",
+              "Select a category: Poetry, Fiction, Non-Fiction, or Essay etc.",
               "Paste your writing into the content box.",
               "Hit Submit — our team will review it before it goes live.",
+              "Daily submissions is restricted to only 2 per day"
             ].map((step, i) => (
               <li key={i} className="flex items-start gap-2.5">
                 <span
