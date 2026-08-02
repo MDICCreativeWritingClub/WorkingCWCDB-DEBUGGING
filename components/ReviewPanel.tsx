@@ -6,12 +6,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   CheckCircle, XCircle, Clock, Lock, Eye, EyeOff,
-  ClipboardList, Settings, PenSquare,
+  ClipboardList, Settings, PenSquare, LogOut,
 } from "lucide-react";
 import { useSubmissions, type Submission } from "@/context/SubmissionsContext";
-import { isEditorUnlocked, setEditorUnlocked } from "@/lib/editorAuth";
-
-const EDITOR_CODE = "CWC2026";
+import { getReviewerSession, signInReviewer, signOutReviewer } from "@/lib/reviewerAuth";
 
 type FilterTab = "pending" | "approved" | "rejected";
 
@@ -150,25 +148,47 @@ function SubmissionCard({
 
 export function ReviewPanel() {
   const { submissions, updateStatus } = useSubmissions();
+  const [checkingSession, setCheckingSession] = useState(true);
   const [unlocked, setUnlocked] = useState(false);
-  const [code, setCode] = useState("");
-  const [error, setError] = useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [signingIn, setSigningIn] = useState(false);
   const [tab, setTab] = useState<FilterTab>("pending");
-  const [showCode, setShowCode] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    if (isEditorUnlocked()) setUnlocked(true);
+    getReviewerSession().then((session) => {
+      setUnlocked(!!session);
+      setCheckingSession(false);
+    });
   }, []);
 
-  function handleUnlock(e: React.FormEvent) {
+  async function handleUnlock(e: React.FormEvent) {
     e.preventDefault();
-    if (code.trim() === EDITOR_CODE) {
-      setEditorUnlocked();
-      setUnlocked(true);
-      setError(false);
-    } else {
-      setError(true);
+    setSigningIn(true);
+    setError(null);
+    const { error: signInError } = await signInReviewer(username, password);
+    if (signInError) {
+      setError(signInError);
+      setSigningIn(false);
+      return;
     }
+    setUnlocked(true);
+    setSigningIn(false);
+  }
+
+  async function handleLogout() {
+    await signOutReviewer();
+    setUnlocked(false);
+  }
+
+  if (checkingSession) {
+    return (
+      <div className="max-w-sm mx-auto px-5 pt-32 text-center" style={{ color: colors.gray400 }}>
+        Loading...
+      </div>
+    );
   }
 
   if (!unlocked) {
@@ -188,15 +208,32 @@ export function ReviewPanel() {
             Review Panel
           </h1>
           <p style={{ color: colors.gray500, fontSize: "0.85rem", marginBottom: "1.75rem", lineHeight: "1.6" }}>
-            This area is for editors and faculty only. Enter your editor code to continue.
+            This area is for editors and faculty only. Log in with your reviewer account to continue.
           </p>
           <form onSubmit={handleUnlock} className="flex flex-col gap-3">
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => { setUsername(e.target.value); setError(null); }}
+              placeholder="Username"
+              autoComplete="username"
+              style={{
+                width: "100%",
+                padding: "0.65rem 1rem",
+                borderRadius: "0.75rem",
+                border: `1px solid ${error ? colors.red300 : colors.green200}`,
+                fontSize: "0.875rem",
+                outline: "none",
+                color: colors.gray900,
+              }}
+            />
             <div className="relative">
               <input
-                type={showCode ? "text" : "password"}
-                value={code}
-                onChange={(e) => { setCode(e.target.value); setError(false); }}
-                placeholder="Editor code"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setError(null); }}
+                placeholder="Password"
+                autoComplete="current-password"
                 style={{
                   width: "100%",
                   padding: "0.65rem 2.5rem 0.65rem 1rem",
@@ -205,27 +242,26 @@ export function ReviewPanel() {
                   fontSize: "0.875rem",
                   outline: "none",
                   color: colors.gray900,
-                  textAlign: "center",
-                  letterSpacing: "0.08em",
                 }}
               />
               <button
                 type="button"
-                onClick={() => setShowCode(!showCode)}
+                onClick={() => setShowPassword(!showPassword)}
                 style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", color: colors.gray400 }}
               >
-                {showCode ? <EyeOff size={16} /> : <Eye size={16} />}
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
             {error && (
-              <p style={{ color: colors.red600, fontSize: "0.8rem" }}>Incorrect code. Please try again.</p>
+              <p style={{ color: colors.red600, fontSize: "0.8rem" }}>{error}</p>
             )}
             <button
               type="submit"
-              className="w-full py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity"
+              disabled={signingIn}
+              className="w-full py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity disabled:opacity-60"
               style={{ backgroundColor: colors.green900, fontWeight: 500 }}
             >
-              Enter
+              {signingIn ? "Logging in..." : "Log In"}
             </button>
           </form>
         </div>
@@ -259,14 +295,24 @@ export function ReviewPanel() {
             Review and action student submissions. Approved pieces move to publication.
           </p>
         </div>
-        <Link
-          href="/control"
-          className="flex items-center gap-2 px-4 py-2 rounded-full text-sm hover:opacity-90 transition-opacity shrink-0"
-          style={{ backgroundColor: colors.yellow100, color: colors.amber800, border: `1px solid ${colors.amber200}` }}
-          title="Admin Control Panel"
-        >
-          <Settings size={14} /> Control Panel
-        </Link>
+        <div className="flex gap-2 shrink-0">
+          <Link
+            href="/control"
+            className="flex items-center gap-2 px-4 py-2 rounded-full text-sm hover:opacity-90 transition-opacity"
+            style={{ backgroundColor: colors.yellow100, color: colors.amber800, border: `1px solid ${colors.amber200}` }}
+            title="Admin Control Panel"
+          >
+            <Settings size={14} /> Control Panel
+          </Link>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-2 rounded-full text-sm hover:opacity-90 transition-opacity"
+            style={{ backgroundColor: colors.gray100, color: colors.gray700 }}
+            title="Log out"
+          >
+            <LogOut size={14} /> Log Out
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4 mb-8">
