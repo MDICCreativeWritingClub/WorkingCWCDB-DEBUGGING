@@ -8,7 +8,7 @@ import {
   ArrowLeft, Undo2, Redo2, CheckCircle, Lock,
 } from "lucide-react";
 import { useSubmissions } from "@/context/SubmissionsContext";
-import { isEditorUnlocked } from "@/lib/editorAuth";
+import { getReviewerSession } from "@/lib/reviewerAuth";
 
 interface Draft {
   title: string;
@@ -63,7 +63,7 @@ export function ReviewEditPage({ id }: { id: string }) {
   const initialized = useRef(false);
 
   useEffect(() => {
-    setAuthorized(isEditorUnlocked());
+    getReviewerSession().then((session) => setAuthorized(!!session));
   }, []);
 
   useEffect(() => {
