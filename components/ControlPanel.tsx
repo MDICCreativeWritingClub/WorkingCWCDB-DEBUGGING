@@ -5,7 +5,7 @@ import { colors } from "@/lib/theme";
 import { useState, useEffect, useRef } from "react";
 import {
   Eye, EyeOff, Lock, Settings, Palette, Crown, Star, BookOpen,
-  RotateCcw, BarChart2, Users, Archive,
+  RotateCcw, BarChart2, Users, Archive, LogOut,
 } from "lucide-react";
 import { useSiteConfig, type SiteConfig } from "@/context/SiteConfigContext";
 import { useSubmissions } from "@/context/SubmissionsContext";
@@ -20,14 +20,16 @@ import { ChoiceTab } from "@/components/control-panel/ChoiceTab";
 import { TeamTab } from "@/components/control-panel/TeamTab";
 import { ContentTab } from "@/components/control-panel/ContentTab";
 import { ArchiveTab } from "@/components/control-panel/ArchiveTab";
-
-const ADMIN_PASSWORD = "1234567";
+import { getReviewerSession, signInReviewer, signOutReviewer } from "@/lib/reviewerAuth";
 
 export function ControlPanel() {
+  const [checkingSession, setCheckingSession] = useState(true);
   const [unlocked, setUnlocked] = useState(false);
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [signingIn, setSigningIn] = useState(false);
   const [tab, setTab] = useState<PanelTab>("overview");
   const [saved, setSaved] = useState(false);
   const [showWritersModal, setShowWritersModal] = useState(false);
@@ -49,15 +51,31 @@ export function ControlPanel() {
     }
   }, [loading]);
 
-  function handleUnlock(e: React.FormEvent) {
+  useEffect(() => {
+    getReviewerSession().then((session) => {
+      setUnlocked(!!session);
+      setCheckingSession(false);
+    });
+  }, []);
+
+  async function handleUnlock(e: React.FormEvent) {
     e.preventDefault();
-    if (password === ADMIN_PASSWORD) {
-      setUnlocked(true);
-      setError(false);
-      setDraft({ ...config });
-    } else {
-      setError(true);
+    setSigningIn(true);
+    setError(null);
+    const { error: signInError } = await signInReviewer(username, password);
+    if (signInError) {
+      setError(signInError);
+      setSigningIn(false);
+      return;
     }
+    setUnlocked(true);
+    setSigningIn(false);
+    setDraft({ ...config });
+  }
+
+  async function handleLogout() {
+    await signOutReviewer();
+    setUnlocked(false);
   }
 
   function handleSave() {
@@ -71,6 +89,14 @@ export function ControlPanel() {
       resetConfig();
       setDraft({ ...config });
     }
+  }
+
+  if (checkingSession) {
+    return (
+      <div className="max-w-sm mx-auto px-5 pt-32 text-center" style={{ color: colors.gray400 }}>
+        Loading...
+      </div>
+    );
   }
 
   if (!unlocked) {
@@ -87,15 +113,32 @@ export function ControlPanel() {
             Control Panel
           </h1>
           <p style={{ color: colors.gray500, fontSize: "0.85rem", marginBottom: "1.75rem", lineHeight: "1.6" }}>
-            Administrator access only. Enter the admin password to continue.
+            Administrator access only. Log in with your admin account to continue.
           </p>
           <form onSubmit={handleUnlock} className="flex flex-col gap-3">
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => { setUsername(e.target.value); setError(null); }}
+              placeholder="Username"
+              autoComplete="username"
+              style={{
+                width: "100%",
+                padding: "0.65rem 1rem",
+                borderRadius: "0.75rem",
+                border: `1px solid ${error ? colors.red300 : colors.gray200}`,
+                fontSize: "0.875rem",
+                outline: "none",
+                color: colors.gray900,
+              }}
+            />
             <div className="relative">
               <input
                 type={showPw ? "text" : "password"}
                 value={password}
-                onChange={(e) => { setPassword(e.target.value); setError(false); }}
-                placeholder="Admin password"
+                onChange={(e) => { setPassword(e.target.value); setError(null); }}
+                placeholder="Password"
+                autoComplete="current-password"
                 style={{
                   width: "100%",
                   padding: "0.65rem 2.5rem 0.65rem 1rem",
@@ -104,8 +147,6 @@ export function ControlPanel() {
                   fontSize: "0.875rem",
                   outline: "none",
                   color: colors.gray900,
-                  textAlign: "center",
-                  letterSpacing: "0.1em",
                 }}
               />
               <button
@@ -117,14 +158,15 @@ export function ControlPanel() {
               </button>
             </div>
             {error && (
-              <p style={{ color: colors.red600, fontSize: "0.8rem" }}>Incorrect password. Please try again.</p>
+              <p style={{ color: colors.red600, fontSize: "0.8rem" }}>{error}</p>
             )}
             <button
               type="submit"
-              className="w-full py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity"
+              disabled={signingIn}
+              className="w-full py-2.5 rounded-xl text-white hover:opacity-90 transition-opacity disabled:opacity-60"
               style={{ backgroundColor: colors.green900, fontWeight: 500 }}
             >
-              Unlock
+              {signingIn ? "Logging in..." : "Unlock"}
             </button>
           </form>
         </div>
@@ -160,13 +202,22 @@ export function ControlPanel() {
           </div>
           <p style={{ color: colors.gray500, fontSize: "0.875rem" }}>Manage site content, themes, and settings.</p>
         </div>
-        <button
-          onClick={handleReset}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm border hover:bg-red-50 transition-colors"
-          style={{ borderColor: colors.red300, color: colors.red800 }}
-        >
-          <RotateCcw size={13} /> Reset to defaults
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm border hover:opacity-90 transition-opacity"
+            style={{ borderColor: colors.gray200, color: colors.gray700, backgroundColor: colors.gray100 }}
+          >
+            <LogOut size={13} /> Log Out
+          </button>
+          <button
+            onClick={handleReset}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm border hover:bg-red-50 transition-colors"
+            style={{ borderColor: colors.red300, color: colors.red800 }}
+          >
+            <RotateCcw size={13} /> Reset to defaults
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
