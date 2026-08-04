@@ -31,6 +31,7 @@ const categoryOptions = [
 interface FormState {
   name: string;
   studentCode: string;
+  phone: string;
   grade: string;
   category: string;
   theme: string;
@@ -40,7 +41,7 @@ interface FormState {
 }
 
 const empty: FormState = {
-  name: "", studentCode: "", grade: "", category: "",
+  name: "", studentCode: "", phone: "", grade: "", category: "",
   theme: "", title: "", content: "", agreed: false,
 };
 
@@ -130,11 +131,21 @@ export function SubmitPage() {
     setForm((f) => ({ ...f, studentCode: digitsOnly }));
   }
 
+  function handlePhoneChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 11);
+    setForm((f) => ({ ...f, phone: digitsOnly }));
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
     if (!/^\d{1,9}$/.test(form.studentCode)) {
       setSubmitError("Student code must contain only numbers (up to 9 digits).");
+      return;
+    }
+
+    if (!/^\d{11}$/.test(form.phone)) {
+      setSubmitError("Phone number must be exactly 11 digits.");
       return;
     }
 
@@ -151,6 +162,7 @@ export function SubmitPage() {
       await addSubmission({
         name: form.name,
         studentCode: form.studentCode,
+        phone: form.phone,
         grade: form.grade,
         category: form.category,
         theme: form.theme,
@@ -274,13 +286,26 @@ export function SubmitPage() {
           </Field>
         </div>
 
-        <Field label="Grade &amp; Section" required>
-          <input
-            required name="grade" value={form.grade} onChange={handleChange}
-            placeholder="e.g. Grade 10 — AS-B"
-            style={inputStyle} {...focus}
-          />
-        </Field>
+        <div className="grid sm:grid-cols-2 gap-5">
+          <Field label="Phone Number" hint="A valid 11-digit phone number we can reach you at" required>
+            <input
+              required name="phone" value={form.phone} onChange={handlePhoneChange}
+              placeholder="e.g. 01712345678"
+              inputMode="numeric"
+              pattern="\d{11}"
+              maxLength={11}
+              title="Exactly 11 digits, numbers only"
+              style={inputStyle} {...focus}
+            />
+          </Field>
+          <Field label="Grade &amp; Section" required>
+            <input
+              required name="grade" value={form.grade} onChange={handleChange}
+              placeholder="e.g. Grade 10 — AS-B"
+              style={inputStyle} {...focus}
+            />
+          </Field>
+        </div>
 
         <div className="grid sm:grid-cols-2 gap-5">
           <Field label="Category" required>
