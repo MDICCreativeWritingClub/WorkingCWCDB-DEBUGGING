@@ -8,6 +8,7 @@ export interface Submission {
   id: string;
   name: string;
   studentCode: string;
+  phone: string;
   grade: string;
   category: string;
   theme: string;
@@ -46,6 +47,7 @@ function mapRow(r: Record<string, unknown>): Submission {
     id: r.id as string,
     name: r.name as string,
     studentCode: r.student_code as string,
+    phone: (r.phone as string) ?? "",
     grade: r.grade as string,
     category: r.category as string,
     theme: r.theme as string,
@@ -100,7 +102,7 @@ export function SubmissionsProvider({ children }: { children: ReactNode }) {
       if (!writerId) {
         const { data: writer, error: writerError } = await supabase
           .from("writers")
-          .insert({ name: sub.name, grade: sub.grade, student_code: sub.studentCode })
+          .insert({ name: sub.name, grade: sub.grade, student_code: sub.studentCode, phone: sub.phone })
           .select("id")
           .single();
 
@@ -110,7 +112,7 @@ export function SubmissionsProvider({ children }: { children: ReactNode }) {
       } else {
         await supabase
           .from("writers")
-          .update({ name: sub.name, grade: sub.grade })
+          .update({ name: sub.name, grade: sub.grade, phone: sub.phone })
           .eq("id", writerId);
       }
 
@@ -122,6 +124,7 @@ export function SubmissionsProvider({ children }: { children: ReactNode }) {
         writer_id: writerId,
         name: sub.name,
         student_code: sub.studentCode,
+        phone: sub.phone,
         grade: sub.grade,
         category: sub.category,
         theme: sub.theme,
